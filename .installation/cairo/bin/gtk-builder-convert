@@ -355,11 +355,7 @@ class GtkBuilderConverter(object):
         uimgr = self._create_root_object('GtkUIManager',
                                          template='uimanager')
 
-        if popup:
-            name = 'popup'
-        else:
-            name = 'menubar'
-
+        name = 'popup' if popup else 'menubar'
         menu = self._dom.createElement(name)
         menu.setAttribute('name', node.getAttribute('id'))
         node.setAttribute('constructor', uimgr.getAttribute('id'))
@@ -447,10 +443,9 @@ class GtkBuilderConverter(object):
         else:
             raise NotImplementedError(object_class)
 
-        if get_property(node, 'use_stock') == 'True':
-            if 'label' in properties:
-                properties['stock_id'] = properties['label']
-                del properties['label']
+        if get_property(node, 'use_stock') == 'True' and 'label' in properties:
+            properties['stock_id'] = properties['label']
+            del properties['label']
 
         properties['name'] = object_id
         action = self._create_object(name,
@@ -460,10 +455,6 @@ class GtkBuilderConverter(object):
             signal_name = signal.getAttribute('name')
             if signal_name in ['activate', 'toggled']:
                 action.appendChild(signal)
-            else:
-                print 'Unhandled signal %s::%s' % (node.getAttribute('class'),
-                                                   signal_name)
-
         if not uimgr.childNodes:
             child = self._dom.createElement('child')
             uimgr.appendChild(child)
@@ -706,9 +697,11 @@ class GtkBuilderConverter(object):
             child.setAttribute("internal-child", "accessible")
 
             atkobject = self._create_object(
-                "AtkObject", None,
-                template='a11y-%s' % (parent_id,),
-                properties=properties)
+                "AtkObject",
+                None,
+                template=f'a11y-{parent_id}',
+                properties=properties,
+            )
             child.appendChild(atkobject)
             objectNode.appendChild(child)
 
@@ -717,8 +710,7 @@ class GtkBuilderConverter(object):
             if widget.getAttribute('id') == root_name:
                 break
         else:
-            raise SystemExit("Could not find an object called `%s'" % (
-                root_name))
+            raise SystemExit(f"Could not find an object called `{root_name}'")
 
         for child in self._interface.childNodes[:]:
             if child.nodeType != Node.ELEMENT_NODE:
